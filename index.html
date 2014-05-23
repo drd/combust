@@ -2,25 +2,17 @@
 <html>
   <head>
     <title>p r o f i l e</title>
-    <script src="/build/react-0.10.0.js"></script>
-    <script src="/build/jquery-1.10.0.min.js"></script>
     <style>
      html { font-size: 62.5%; font-family: sans-serif; }
-     div.stack {
-       display: inline-block;
-       vertical-align: baseline;
-     }
-     div.s {
-       display: block;
-       overflow: hidden;
-     }
-     .hide {
-       visibility: hidden;
-     }
+     body { margin: 0; height: 100%; width: 100%; }
+     h1 { font-size: 2rem; margin: .5rem; }
+     canvas { width: 100%; height: 100%; }
     </style>
   </head>
   <body>
-    <div id=profile></div>
-    <script type="text/javascript" src="build/profile.js"></script>
+    <h1>Combust <input type=file id=data></h1>
+    <canvas id=profile></canvas>
+    <script src="/src/jquery-1.10.0.min.js"></script>
+    <script src="/src/canvas-profile.js"></script>
   </body>
 </html>
