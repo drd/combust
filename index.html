@@ -10,9 +10,12 @@
     </style>
   </head>
   <body>
-    <h1>Combust <input type=file id=data></h1>
-    <canvas id=profile></canvas>
+    <h1>Combust <input type=range id=width min=1 max=50></h1>
+    <div>
+      <canvas id=profile></canvas>
+    </div>
     <script src="/src/jquery-1.10.0.min.js"></script>
+    <script src="/src/jquery-mousewheel.js"></script>
     <script src="/src/canvas-profile.js"></script>
   </body>
 </html>
