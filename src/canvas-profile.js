@@ -8,8 +8,8 @@ var App = {
     samples: null,
     state: {
         xOffset: 0,
-        frameHeight: 15,
-        frameWidth: 15
+        yScale: 15,
+        xScale: 15
     },
     setState: function(state) {
         for (var key in state) {
@@ -32,6 +32,7 @@ var App = {
             function(m, s) { return Math.max(m, s[3].length)}, 0);
 
         processed = samples.map(function() { return Array(height); });
+        processed.height = height;
 
         // loop through all samples, set processed[sample][frame] to
         // - undefined if the stack was not that high OR
@@ -80,12 +81,23 @@ var App = {
         $(canvas).on('mousewheel', function(e) {
             var xOffset = Math.min(
                 Math.max(this.state.xOffset + e.deltaX, 0),
-                this.samples.length - (Math.floor(window.innerWidth / this.state.frameWidth)));
+                this.samples.length - (Math.floor(window.innerWidth / this.state.xScale)));
             this.setState({xOffset: xOffset});
             return false;
         }.bind(this));
         $('#width').on('change', function(e) {
-            this.setState({frameWidth: parseInt(e.target.value, 10)})
+            var delta = {
+                xScale: parseInt(e.target.value, 10),
+                xOffset: this.state.xOffset
+            };
+
+            var samplesVisible = Math.floor(window.innerWidth / delta.xScale);
+            // adjust xOffset in the case that a change to a narrower width
+            // would cause the chart to go beyond the end of the samples
+            if (delta.xOffset + samplesVisible > this.samples.length) {
+                delta.xOffset = this.samples.length - samplesVisible;
+            }
+            this.setState(delta);
         }.bind(this));
     },
     textWidthCache: {},
@@ -102,7 +114,67 @@ var App = {
         var context = this.context;
         var width = canvas.width;
         var height = canvas.height;
-        var samplesVisible = Math.floor(width / this.state.frameWidth);
+        var samplesVisible = Math.floor(width / this.state.xScale);
+        var yScale = this.state.yScale;
+        var xScale = this.state.xScale;
+
+        // for offscreen text rendering
+        var subcanvas = document.createElement('canvas');
+        subcanvas.width = width;
+        subcanvas.height = 16;
+        var subctx = subcanvas.getContext('2d');
+        subctx.setFillColor('#000')
+
+        var y = height;
+
+        for (var j = 0; j < this.samples.height; j++) {
+            var x = 0;
+            y -= this.state.yScale;
+
+            // set fill & stroke color once
+            context.setFillColor(hsl(j * 5, 70, 70));
+            context.setStrokeColor(hsl(j * 5, 80, 60));
+
+            for (var i = 0; i < samplesVisible; i++) {
+                var frame = this.samples[this.state.xOffset + i][j];
+                if (!frame) {
+                    x += xScale;
+                    continue;
+                }
+                var text = frame.fn;
+
+                var frameWidth = frame.width * xScale;
+
+                context.fillRect(x, y, frameWidth, yScale);
+
+                if (frameWidth > 5) {
+                    context.strokeRect(x, y, frameWidth, yScale);
+                }
+
+                if (frameWidth > 20) {
+                    subctx.clearRect(0, 0, subcanvas.width, subcanvas.height);
+                    subctx.fillText(text, 0, yScale);
+                    var textWidth = this.measureText(text);
+                    var textDrawWidth = Math.min(textWidth, frameWidth);
+
+                    context.drawImage(subcanvas, 0, 0, textDrawWidth, 16,
+                                      x, y - 3, textDrawWidth, 16);
+                }
+
+                i += frame.width - 1;
+                x += xScale * frame.width;
+            }
+        }
+        console.timeEnd('render');
+    },
+    renderStack: function() {
+        console.time('render');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight - canvas.offsetTop;
+        var context = this.context;
+        var width = canvas.width;
+        var height = canvas.height;
+        var samplesVisible = Math.floor(width / this.state.xScale);
 
         var seen = [];
         for (var i = 0; i < samplesVisible; i++) {
@@ -115,40 +187,37 @@ var App = {
         subcanvas.width = width;
         subcanvas.height = 16;
         var subctx = subcanvas.getContext('2d');
-        //subctx.globalCompositeOperation = 'source-in';
+        subctx.setFillColor('#000')
 
         for (var i = 0; i < samplesVisible; i++) {
             var y = height;
             var frames = this.samples[i + this.state.xOffset];
             for (var j = 0; frames[j] && j < frames.length; j++) {
-                y -= this.state.frameHeight;
+                y -= this.state.yScale;
                 if (seen[i][j]) {
                     continue;
                 }
                 var frame = frames[j];
                 var text = frame.fn;
 
-                var frameWidth = frame.width * this.state.frameWidth;
+                var frameWidth = frame.width * this.state.xScale;
                 subctx.clearRect(0, 0, subcanvas.width, subcanvas.height);
-                subctx.setFillColor('#000')
-                subctx.fillText(text, 0, this.state.frameHeight);
+                subctx.fillText(text, 0, this.state.yScale);
                 var textWidth = this.measureText(text);
                 var textDrawWidth = Math.min(textWidth, frameWidth);
 
                 context.setFillColor(hsl(j * 5, 70, 70));
-                context.fillRect(x, y, frameWidth, this.state.frameHeight);
                 context.setStrokeColor(hsl(j * 5, 80, 60));
-                context.strokeRect(x, y, frame.width * this.state.frameWidth, this.state.frameHeight);
+                context.fillRect(x, y, frameWidth, this.state.yScale);
+                context.strokeRect(x, y, frameWidth, this.state.yScale);
 
                 context.drawImage(subcanvas, 0, 0, textDrawWidth, 16,
                                              x, y - 3, textDrawWidth, 16);
-                // context.setFillColor('#000')
-                // context.fillText(frame.fn, x, y + this.state.frameHeight);
                 for (var k = 1; k < frame.width && i + k < samplesVisible; k++) {
                     seen[i + k][j] = true;
                 }
             }
-            x += this.state.frameWidth;
+            x += this.state.xScale;
         }
         console.timeEnd('render');
     }
