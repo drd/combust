@@ -1,0 +1,4 @@
+TODO
+- investigate LRU or random replacement caching
+  - text width?
+  - offscreen canvas?
