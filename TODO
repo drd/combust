@@ -1,4 +1,11 @@
 TODO
-- investigate LRU or random replacement caching
-  - text width?
-  - offscreen canvas?
+- calculate x coordinates by time rather than slot
+  - look at total duration
+  - change state.xScale from pixel width to amount of time visible
+  - diff samples in preprocessing to hint renderer
+- debounce mousemove
+- replace magic numbers
+  - padding
+  - hsl constants
+  - stroke & text thresholds
+  - width & height calculations

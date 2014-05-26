@@ -9,7 +9,10 @@ var App = {
     state: {
         xOffset: 0,
         yScale: 15,
-        xScale: 15
+        xScale: 15,
+        hovered: undefined,
+        hoverX: undefined,
+        hoverY: undefined
     },
     setState: function(state) {
         for (var key in state) {
@@ -40,8 +43,10 @@ var App = {
         //     - the number of samples at this depth which represent
         //       the same function call
         //     - the string representation of that function call
+        var duration = 0;
         for (var i = 0; i < width; i++) {
             var stack = processed[i];
+            var width;
             for (var j = 0; j < samples[i][3].length; j++) {
                 // skip if we have been here already
                 if (processed[i][j]) {
@@ -72,6 +77,7 @@ var App = {
             }
         }
         console.timeEnd('prep');
+        console.log('total duration: ', duration);
         return processed;
     },
     boot: function(samples) {
@@ -82,13 +88,17 @@ var App = {
             var xOffset = Math.min(
                 Math.max(this.state.xOffset + e.deltaX, 0),
                 this.samples.length - (Math.floor(window.innerWidth / this.state.xScale)));
-            this.setState({xOffset: xOffset});
+            this.setState({
+                xOffset: xOffset,
+                hovered: null
+            });
             return false;
         }.bind(this));
         $('#width').on('change', function(e) {
             var delta = {
                 xScale: parseInt(e.target.value, 10),
-                xOffset: this.state.xOffset
+                xOffset: this.state.xOffset,
+                hovered: null
             };
 
             var samplesVisible = Math.floor(window.innerWidth / delta.xScale);
@@ -98,6 +108,20 @@ var App = {
                 delta.xOffset = this.samples.length - samplesVisible;
             }
             this.setState(delta);
+        }.bind(this));
+        $(canvas).on('mousemove', function(e) {
+            var x = Math.floor(e.offsetX / this.state.xScale) + this.state.xOffset;
+            var height = Math.floor(canvas.offsetHeight / this.state.yScale);
+            var y = height - Math.floor(e.offsetY / this.state.yScale) - 1;
+            var delta = {hovered: this.samples[x][y]};
+            if (delta.hovered) {
+                delta.hoverX = e.offsetX;
+                delta.hoverY = e.offsetY;
+            } else {
+                delta.hovered = null;
+            }
+            this.setState(delta);
+            console.log(x, y, delta);
         }.bind(this));
         $(window).on('resize', function(e) {
             window.requestAnimationFrame(App.render.bind(this));
@@ -168,61 +192,41 @@ var App = {
                 x += xScale * frame.width;
             }
         }
+
+        if (this.state.hovered) {
+            this.drawHover();
+        }
         console.timeEnd('render');
     },
-    renderStack: function() {
-        console.time('render');
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight - canvas.offsetTop;
+    drawHover: function() {
         var context = this.context;
-        var width = canvas.width;
-        var height = canvas.height;
-        var samplesVisible = Math.floor(width / this.state.xScale);
+        var hovered = this.state.hovered;
+        var left = this.state.hoverX;
+        var top = this.state.hoverY;
+        var lines = [
+            hovered.line + ' [' + hovered.fn + ']',
+            hovered.file + ' (' + hovered.lineNumber + ')'
+        ];
+        var width = lines.reduce(function(max, line) {
+            var width = this.measureText(line);
+            return Math.max(max, width);
+        }.bind(this), 0) + 5;
+        var height = lines.length * 13 + 3; // 10 px font, 3 px padding
 
-        var seen = [];
-        for (var i = 0; i < samplesVisible; i++) {
-            seen[i] = [];
+        if (width + left > canvas.offsetWidth) {
+            left += canvas.offsetWidth - (width + left) - 3;
         }
 
-        var x = 0;
-
-        var subcanvas = document.createElement('canvas');
-        subcanvas.width = width;
-        subcanvas.height = 16;
-        var subctx = subcanvas.getContext('2d');
-        subctx.setFillColor('#000')
-
-        for (var i = 0; i < samplesVisible; i++) {
-            var y = height;
-            var frames = this.samples[i + this.state.xOffset];
-            for (var j = 0; frames[j] && j < frames.length; j++) {
-                y -= this.state.yScale;
-                if (seen[i][j]) {
-                    continue;
-                }
-                var frame = frames[j];
-                var text = frame.fn;
-
-                var frameWidth = frame.width * this.state.xScale;
-                subctx.clearRect(0, 0, subcanvas.width, subcanvas.height);
-                subctx.fillText(text, 0, this.state.yScale);
-                var textWidth = this.measureText(text);
-                var textDrawWidth = Math.min(textWidth, frameWidth);
-
-                context.setFillColor(hsl(j * 5, 70, 70));
-                context.setStrokeColor(hsl(j * 5, 80, 60));
-                context.fillRect(x, y, frameWidth, this.state.yScale);
-                context.strokeRect(x, y, frameWidth, this.state.yScale);
-
-                context.drawImage(subcanvas, 0, 0, textDrawWidth, 16,
-                                             x, y - 3, textDrawWidth, 16);
-                for (var k = 1; k < frame.width && i + k < samplesVisible; k++) {
-                    seen[i + k][j] = true;
-                }
-            }
-            x += this.state.xScale;
+        if (height + top > canvas.offsetHeight) {
+            top += canvas.offsetHeight - (height + top) - 3;
         }
-        console.timeEnd('render');
+
+        context.setFillColor('rgba(0,0,0,0.3)');
+        context.fillRect(left, top, width, height);
+        context.setFillColor('#fff');
+        lines.forEach(function(line, i) {
+            context.fillText(line, left + 3, top + (i + 1) * 13);
+        });
     }
 }
 
