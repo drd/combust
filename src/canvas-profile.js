@@ -99,6 +99,9 @@ var App = {
             }
             this.setState(delta);
         }.bind(this));
+        $(window).on('resize', function(e) {
+            window.requestAnimationFrame(App.render.bind(this));
+        }.bind(this));
     },
     textWidthCache: {},
     measureText: function(str) {
