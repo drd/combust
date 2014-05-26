@@ -26,6 +26,21 @@ var App = {
         App.state = $.extend(App.prev || {}, state);
     },
     preProcess: function(samples) {
+        // input format:
+        // an array of samples
+        // [
+        //    0: timestamp
+        //    1: thread id
+        //    2: thread name
+        //    3: stack, array: [
+        //       ...: array: [
+        //         0: filename
+        //         1: line number
+        //         2: function
+        //         3: line
+        //       ]
+        //    ]
+        // ]
         console.time('prep');
 
         // final value in samples is a sentinel
