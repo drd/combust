@@ -136,7 +136,6 @@ var App = {
                 delta.hovered = null;
             }
             this.setState(delta);
-            console.log(x, y, delta);
         }.bind(this));
         $(window).on('resize', function(e) {
             window.requestAnimationFrame(App.render.bind(this));
