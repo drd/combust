@@ -69,11 +69,11 @@ var App = {
                 hovered: null
             };
 
-            var samplesVisible = Math.floor(window.innerWidth / delta.xScale);
+            var timeVisible = this.samples.duration * delta.xScale * .01;
             // adjust xOffset in the case that a change to a narrower width
             // would cause the chart to go beyond the end of the samples
-            if (delta.xOffset + samplesVisible > this.samples.length) {
-                delta.xOffset = this.samples.length - samplesVisible;
+            if (delta.xOffset + timeVisible > this.samples.duration) {
+                delta.xOffset = this.samples.duration - timeVisible;
             }
             this.setState(delta);
         }.bind(this));
@@ -335,7 +335,9 @@ var App = {
             }
         }
 
-        processed.bsp = new BSP(processed, {getter: function(sample) { return sample.t; } })
+        processed.bsp = new BSP(processed, {
+            getter: function(sample, kind) { return sample.t; }
+        });
         console.timeEnd('prep');
 
         return processed;
