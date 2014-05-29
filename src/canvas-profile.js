@@ -62,16 +62,6 @@ var App = {
         this.overlayContext = overlay.getContext('2d');
         this.render();
         $('#width').val(this.state.xScale);
-        $(overlay).on('mousewheel', function(e) {
-            var xOffset = Math.min(
-                Math.max(this.state.xOffset + e.deltaX * this.state.xScale / 100, 0),
-                this.samples.duration)
-            this.setState({
-                xOffset: xOffset,
-                hovered: null
-            });
-            return false;
-        }.bind(this));
         $('#width').on('change', function(e) {
             var delta = {
                 xScale: parseFloat(e.target.value, 10),
@@ -86,6 +76,24 @@ var App = {
                 delta.xOffset = this.samples.length - samplesVisible;
             }
             this.setState(delta);
+        }.bind(this));
+        $('#height').val(this.state.xScale);
+        $('#height').on('change', function(e) {
+            var delta = {
+                yScale: parseFloat(e.target.value, 10),
+                hovered: null
+            };
+            this.setState(delta);
+        }.bind(this))
+        $(overlay).on('mousewheel', function(e) {
+            var xOffset = Math.min(
+                Math.max(this.state.xOffset + e.deltaX * this.state.xScale / 100, 0),
+                this.samples.duration * ((100 - this.state.xScale) / 100));
+            this.setState({
+                xOffset: xOffset,
+                hovered: null
+            });
+            return false;
         }.bind(this));
         // $(overlay).on('mousemove', function(e) {
         //     var x = Math.floor(e.offsetX / this.state.xScale) + this.state.xOffset;
@@ -133,10 +141,22 @@ var App = {
 
         var y = height;
 
-        var visibleSamples = [];
-        this.samples.bsp.root.inRange(this.state.xOffset,
-                                      this.state.xOffset + timeVisible,
-                                      function(s) { visibleSamples.push(s)});
+        var visibleSamples = this.samples.bsp.inRange(
+            this.state.xOffset,
+            this.state.xOffset + timeVisible);
+
+        // begin shitty hack
+        var xOffset = this.state.xOffset * .95;
+        while (visibleSamples.length == 0) {
+            // back off the starting point until we find something
+            // this should be fixed by using range math in the BSP
+            // taking the sample duration into account
+            visibleSamples = this.samples.bsp.inRange(
+                xOffset,
+                this.state.xOffset + timeVisible);
+            xOffset *= .95;
+        }
+        // end shitty hack
 
         // add the previous sample if need be
         if (visibleSamples[0].t > this.state.xOffset) {
@@ -160,11 +180,15 @@ var App = {
                 }
                 tMax = sample.t + frame.duration;
 
+                var frameWidth = frame.duration * size;
                 var x = (sample.t - this.state.xOffset) * size;
-                if (x < 0) { x = 0; }
+                if (x < 0) {
+                    // adjust width to compensate and draw from the left edge of the screen
+                    frameWidth += x;
+                    x = 0;
+                }
                 var text = frame.fn;
 
-                var frameWidth = frame.duration * size;
 
                 context.fillRect(x, y, frameWidth, yScale);
 

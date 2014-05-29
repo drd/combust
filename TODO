@@ -1,10 +1,13 @@
 TODO
 - calculate x coordinates by time rather than slot
+  - port mousemove handler to BSP
   - if initial visible sample is not == first time visible:
-    - find previous sample, and draw with its x as 0
     - ugh, convert min/max tree to use range of sample.t -> sample.t + sample.duration
       - narf
 - support retina
   - extract canvas setup?
 - replace magic numbers
   - width & height calculations
+- fix text rendering with variable height
+  - move ui -> App.state
+  - probably split some components or at least layout functions out
