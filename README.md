@@ -7,9 +7,14 @@ a flame-chart profile view
 how
 ---
 
-This is based on the work of williame/will_profile -- if you use his sampling profiler in your python project and save the generated data to a JSON file, this will display the stack in a visualization similar to the Chrome Flamechart profile view.
+This is based on the work of [williame/will_profile] -- if you use his sampling profiler in your python project and save the generated data to a JSON file, this will display the stack in a visualization similar to the Chrome Flamechart profile view.
 
 At the current moment, only Google Chrome seems to work. Firefox does not apparently support the `Canvas.setFillColor` method (wtf?).
+
+1. use will_profile.py to generate some samples
+2. copy those into the repo as samples.json
+3. python -m SimpleHTTPServer in root of repo
+4. http://localhost:8000
 
 why
 ---
