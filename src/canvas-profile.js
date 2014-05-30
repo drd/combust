@@ -58,6 +58,8 @@ var App = {
     },
     boot: function(samples) {
         this.samples = this.preProcess(samples);
+        this.offscreenCanvas = document.createElement('canvas');
+        this.offscreenContext = this.offscreenCanvas.getContext('2d');
         this.profileContext = profile.getContext('2d');
         this.overlayContext = overlay.getContext('2d');
         this.render();
@@ -123,7 +125,9 @@ var App = {
         console.time('render');
         profile.width = window.innerWidth;
         profile.height = window.innerHeight - profile.offsetTop;
-        var context = this.profileContext;
+        this.offscreenCanvas.width = profile.width;
+        this.offscreenCanvas.height = profile.height;
+        var context = this.offscreenContext;
         var width = profile.width;
         var height = profile.height;
         // xScale is percent of samples visible
@@ -210,6 +214,7 @@ var App = {
 
         // clear hover on redraw
         this.overlayContext.clearRect(0, 0, overlay.width, overlay.height);
+        this.profileContext.drawImage(this.offscreenCanvas, 0, 0);
         console.timeEnd('render');
     },
     drawHover: function() {

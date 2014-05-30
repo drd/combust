@@ -8,6 +8,7 @@ TODO
   - extract canvas setup?
 - replace magic numbers
   - width & height calculations
+- mousemove should use offscreen blit for as much as possible
 - fix text rendering with variable height
   - move ui -> App.state
   - probably split some components or at least layout functions out
