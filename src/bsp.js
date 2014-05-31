@@ -49,11 +49,11 @@ Node.prototype.inOrder = function walk(visitor) {
 
 
 Node.prototype.visitInRange = function(min, max, visitor) {
-    if (max < this.min || min > this.max) {
+    if (max < this.min[0] || min > this.max[1]) {
         return;
     }
     this.left && this.visitInRange.call(this.left, min, max, visitor);
-    if (this.value >= min && this.value <= max) {
+    if (this.value[1] >= min && this.value[0] <= max) {
         visitor(this.obj);
     }
     this.right && this.visitInRange.call(this.right, min, max, visitor);

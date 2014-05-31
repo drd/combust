@@ -149,19 +149,6 @@ var App = {
             this.state.xOffset,
             this.state.xOffset + timeVisible);
 
-        // begin shitty hack
-        var xOffset = this.state.xOffset * .95;
-        while (visibleSamples.length == 0) {
-            // back off the starting point until we find something
-            // this should be fixed by using range math in the BSP
-            // taking the sample duration into account
-            visibleSamples = this.samples.bsp.inRange(
-                xOffset,
-                this.state.xOffset + timeVisible);
-            xOffset *= .95;
-        }
-        // end shitty hack
-
         // add the previous sample if need be
         if (visibleSamples[0].t > this.state.xOffset) {
             visibleSamples.unshift(processed[visibleSamples[0].index - 1]);
@@ -341,7 +328,13 @@ var App = {
         }
 
         processed.bsp = new BSP(processed, {
-            getter: function(sample, kind) { return sample.t; }
+            getter: function(sample, kind) {
+                var min = sample.t;
+                var max = sample.reduce(function(max, s) {
+                    return Math.max(max, min + s.duration)
+                }, 0);
+                return [min, max];
+            }
         });
         console.timeEnd('prep');
 
