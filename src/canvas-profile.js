@@ -40,9 +40,12 @@ var App = {
     setState: function(state) {
         var fn = App.render.bind(this);
 
+        App.prev = App.state;
+        App.state = $.extend({}, App.prev || {}, state);
+
         for (var key in state) {
             if (state.hasOwnProperty(key)) {
-                if (state[key] !== this.state[key]) {
+                if (state[key] !== this.prev[key]) {
                     // derpy hack to not re-render everything
                     if (key.indexOf('hover') != -1) {
                         // let's not redraw the whole board
@@ -53,8 +56,6 @@ var App = {
                 }
             }
         }
-        App.prev = App.state;
-        App.state = $.extend(App.prev || {}, state);
     },
     boot: function(samples) {
         this.samples = this.preProcess(samples);

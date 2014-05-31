@@ -1,11 +1,17 @@
 TODO
 - calculate x coordinates by time rather than slot
   - port mousemove handler to BSP
+    - move to a much sparser representation
 - support retina
   - extract canvas setup?
 - replace magic numbers
   - width & height calculations
 - mousemove should use offscreen blit for as much as possible
+  - introduce t-range parameterized render func
+  - blit offset visible area of current frame 
+  - render dirty rect -> onscreen
+  - re-render full frame after debounced mousewheel complete
+    - to compensate for offset-specific text?
 - fix text rendering with variable height
   - move ui -> App.state
   - probably split some components or at least layout functions out
