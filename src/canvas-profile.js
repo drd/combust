@@ -5,6 +5,16 @@ function hsl(h, s, l) {
     return 'hsl(' + [h, s + '%', l + '%'] + ')';
 }
 
+function memoize(fn) {
+    var cache = {};
+    return function(arg) {
+        if (cache[arg]) {
+            return cache[arg];
+        }
+        return cache[arg] = fn.call(this, arg);
+    }
+}
+
 var App = {
     samples: null,
     state: {
@@ -98,19 +108,19 @@ var App = {
             });
             return false;
         }.bind(this));
-        // $(overlay).on('mousemove', function(e) {
-        //     var x = Math.floor(e.offsetX / this.state.xScale) + this.state.xOffset;
-        //     var height = Math.floor(profile.offsetHeight / this.state.yScale);
-        //     var y = height - Math.floor(e.offsetY / this.state.yScale) - 1;
-        //     var delta = {hovered: this.samples[x][y]};
-        //     if (delta.hovered) {
-        //         delta.hoverX = e.offsetX;
-        //         delta.hoverY = e.offsetY;
-        //     } else {
-        //         delta.hovered = null;
-        //     }
-        //     this.setState(delta);
-        // }.bind(this));
+        $(overlay).on('mousemove', function(e) {
+            var x = e.offsetX / profile.width * this.samples.duration * this.state.xScale / 100 + this.state.xOffset;
+            var y = Math.floor((profile.offsetHeight - e.offsetY) / this.state.yScale);
+            var candidates = this.samples.bsp.intersects(x);
+            var frame = candidates.filter(function(c) { return c.depth == y});
+            var delta = {hovered: null};
+            if (frame.length) {
+                delta.hovered = frame[0];
+                delta.hoverX = e.offsetX;
+                delta.hoverY = e.offsetY;
+            }
+            this.setState(delta);
+        }.bind(this));
         $(window).on('resize', function(e) {
             window.requestAnimationFrame(App.render.bind(this));
         }.bind(this));
@@ -122,6 +132,16 @@ var App = {
         }
         return this.textWidthCache[str];
     },
+    fillForDepth: memoize(function(depth) {
+        return hsl(depth * this.ui.hueShift,
+                   this.ui.fill.saturation,
+                   this.ui.fill.lightness);
+    }),
+    strokeForDepth: memoize(function(depth) {
+        return hsl(depth * this.ui.hueShift,
+                   this.ui.stroke.saturation,
+                   this.ui.stroke.lightness);
+    }),
     render: function() {
         console.time('render');
         profile.width = window.innerWidth;
@@ -150,55 +170,76 @@ var App = {
             this.state.xOffset,
             this.state.xOffset + timeVisible);
 
-        // add the previous sample if need be
-        if (visibleSamples[0].t > this.state.xOffset) {
-            visibleSamples.unshift(processed[visibleSamples[0].index - 1]);
-        }
+        for (var i = 0; i < visibleSamples.length; i++) {
+            var frame = visibleSamples[i];
+            y = height - yScale * (frame.depth + 1);
+            if ((i == 0) || (i > 0 && frame.depth != visibleSamples[i-1].depth)) {
+                context.setFillColor(this.fillForDepth(frame.depth));
+            }
+            var frameWidth = frame.duration * size;
+            var x = (frame.t - this.state.xOffset) * size;
+            if (x < 0) {
+                // adjust width to compensate and draw from the left edge of the screen
+                frameWidth += x;
+                x = 0;
+            }
+            var text = frame.fn;
+            context.fillRect(x, y, frameWidth, yScale);
 
-        for (var j = 0; j < this.samples.height; j++) {
-            y -= this.state.yScale;
+            if (frameWidth > this.ui.text.threshold) {
+                subctx.clearRect(0, 0, subcanvas.width, subcanvas.height);
+                subctx.fillText(text, 0, yScale);
+                var textWidth = this.measureText(text);
+                var textDrawWidth = Math.min(textWidth, frameWidth);
 
-            // set fill & stroke color once
-            context.setFillColor(hsl(j * this.ui.hueShift, this.ui.fill.saturation, this.ui.fill.lightness));
-            context.setStrokeColor(hsl(j * this.ui.hueShift, this.ui.stroke.saturation, this.ui.stroke.lightness));
-
-            var tMax = -1;
-
-            for (var i = 0; i < visibleSamples.length; i++) {
-                var sample = visibleSamples[i];
-                var frame = sample[j];
-                if (!frame || sample.t < tMax) {
-                    continue;
-                }
-                tMax = sample.t + frame.duration;
-
-                var frameWidth = frame.duration * size;
-                var x = (sample.t - this.state.xOffset) * size;
-                if (x < 0) {
-                    // adjust width to compensate and draw from the left edge of the screen
-                    frameWidth += x;
-                    x = 0;
-                }
-                var text = frame.fn;
-
-
-                context.fillRect(x, y, frameWidth, yScale);
-
-                if (frameWidth > this.ui.stroke.threshold) {
-                    context.strokeRect(x, y, frameWidth, yScale);
-                }
-
-                if (frameWidth > this.ui.text.threshold) {
-                    subctx.clearRect(0, 0, subcanvas.width, subcanvas.height);
-                    subctx.fillText(text, 0, yScale);
-                    var textWidth = this.measureText(text);
-                    var textDrawWidth = Math.min(textWidth, frameWidth);
-
-                    context.drawImage(subcanvas, 0, 0, textDrawWidth, 16,
-                                      x, y - 3, textDrawWidth, 16);
-                }
+                context.drawImage(subcanvas, 0, 0, textDrawWidth, 16,
+                                  x, y - 3, textDrawWidth, 16);
             }
         }
+        // for (var j = 0; j < this.samples.height; j++) {
+        //     y -= this.state.yScale;
+
+        //     // set fill & stroke color once
+        //     context.setFillColor(hsl(j * this.ui.hueShift, this.ui.fill.saturation, this.ui.fill.lightness));
+        //     context.setStrokeColor(hsl(j * this.ui.hueShift, this.ui.stroke.saturation, this.ui.stroke.lightness));
+
+        //     var tMax = -1;
+
+        //     for (var i = 0; i < visibleSamples.length; i++) {
+        //         var sample = visibleSamples[i];
+        //         var frame = sample[j];
+        //         if (!frame || sample.t < tMax) {
+        //             continue;
+        //         }
+        //         tMax = sample.t + frame.duration;
+
+        //         var frameWidth = frame.duration * size;
+        //         var x = (sample.t - this.state.xOffset) * size;
+        //         if (x < 0) {
+        //             // adjust width to compensate and draw from the left edge of the screen
+        //             frameWidth += x;
+        //             x = 0;
+        //         }
+        //         var text = frame.fn;
+
+
+        //         context.fillRect(x, y, frameWidth, yScale);
+
+        //         if (frameWidth > this.ui.stroke.threshold) {
+        //             context.strokeRect(x, y, frameWidth, yScale);
+        //         }
+
+        //         if (frameWidth > this.ui.text.threshold) {
+        //             subctx.clearRect(0, 0, subcanvas.width, subcanvas.height);
+        //             subctx.fillText(text, 0, yScale);
+        //             var textWidth = this.measureText(text);
+        //             var textDrawWidth = Math.min(textWidth, frameWidth);
+
+        //             context.drawImage(subcanvas, 0, 0, textDrawWidth, 16,
+        //                               x, y - 3, textDrawWidth, 16);
+        //         }
+        //     }
+        // }
 
         // clear hover on redraw
         this.overlayContext.clearRect(0, 0, overlay.width, overlay.height);
@@ -265,75 +306,59 @@ var App = {
         var height = samples.reduce(
             function(m, s) { return Math.max(m, s[3].length)}, 0);
 
-        processed = samples.slice(0, width).map(function() { return Array(height); });
+        var processed = [];
         processed.height = height;
         processed.duration = samples[width][0] - samples[0][0];
-        processed.timeSampleMap = {};
         console.log('total duration: ', processed.duration);
 
-        // loop through all samples, set processed[sample][frame] to
-        // - processed[sample].t will be the time offset of that sample,
+        // loop through all samples, append frames to processed
+        // - processed[n].t will be the time offset of that sample,
         //   starting with processed[0].t == 0
         // - undefined if the stack was not that high OR
-        // - a cell containing:
+        // - a frame containing:
         //     - the string representation of that function call
+        //     - the time offset of the sample containing this frame as frame.t
+        //     - the stack depth of this call as frame.depth
         //     - the length of that function call as defined by the interval
         //       processed[sample].t to processed[n].t where processed[n][frame]
         //       represents the first different function call
-        //     DEPRECATED
-        //     - the number of samples at this depth which represent
-        //       the same function call
+
 
         var initialTime = samples[0][0];
 
         for (var i = 0; i < width; i++) {
-            var width;
-
-            // hints for our renderer to see where to start looking for samples
-            processed[i].t = samples[i][0] - initialTime;
-            processed[i].index = i;
+            var t = samples[i][0] - initialTime;
 
             for (var j = 0; j < samples[i][3].length; j++) {
                 // skip if we have been here already
-                if (processed[i][j]) {
+                if (samples[i][3][j] && samples[i][3][j].skip) {
                     continue;
                 }
                 var cell = frameFromJson(samples[i][3][j]);
-                var frameWidth = 1;
 
-                // find all adjacent cells that match this frame
+                // find all adjacent cells that match this frame,
+                // mark them as Nothing
                 for (var k = i + 1; (k < width &&
                                      samples[k][3][j] &&
                                      samples[k][3][j][0] == cell.file &&
                                      samples[k][3][j][1] == cell.lineNumber);
-                     k++, frameWidth++) {
-                    processed[k][j] = frameFromJson(samples[k][3][j]);
-                    processed[k][j].orig = i;
+                     k++) {
+                    samples[k][3][j].skip = true;
                 }
 
-                // update the current cell width
-                cell.width = frameWidth;
-                var endTime = samples[k][0] - initialTime;
-                cell.duration = endTime - processed[i].t;
+                var finalTime = samples[k][0] - initialTime;
+                cell.t = t;
+                cell.duration = finalTime - t;
+                cell.depth = j;
 
-                processed[i][j] = cell;
-                var w = frameWidth - 1;
-
-                // mark the width of the remaining cells
-                for (var k = i + 1; k < i + frameWidth; k++) {
-                    processed[k][j].width = w--;
-                    // ugh, renormalize because this deals with processed & unprocessed times
-                    processed[k][j].duration = endTime - samples[k][0] + initialTime;
-                }
+                processed.push(cell);
             }
         }
 
         processed.bsp = new BSP(processed, {
-            getter: function(sample, kind) {
-                var min = sample.t;
-                var max = sample.reduce(function(max, s) {
-                    return Math.max(max, min + s.duration)
-                }, 0);
+            getter: function(frame, kind) {
+                var min = frame.t;
+                var max = frame.t + frame.duration;
                 return [min, max];
             }
         });

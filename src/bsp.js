@@ -13,6 +13,14 @@ BSP.prototype.inRange = function inRange(min, max) {
 };
 
 
+BSP.prototype.intersects = function intersects(value) {
+    var intersects = [];
+    this.root.findIntersection(value, function(v) {
+        intersects.push(v);
+    });
+    return intersects;
+};
+
 function Node(obj, value, min, max) {
     this.obj = obj;
     this.value = value;
@@ -26,13 +34,15 @@ Node.partition = function partition(values, getter, start, end) {
         start = 0;
         end = values.length - 1;
     }
-    var middle = Math.round((start + end) / 2);
+    var middle = Math.floor((start + end) / 2);
     var node = new Node(values[middle],
                         getter(values[middle]),
                         getter(values[start]),
                         getter(values[end]));
-    if (start < end) {
+    if (start < middle) {
         node.left = this.partition(values, getter, start, middle - 1);
+    }
+    if (middle < end) {
         node.right = this.partition(values, getter, middle + 1, end);
     }
     return node;
@@ -49,12 +59,18 @@ Node.prototype.inOrder = function walk(visitor) {
 
 
 Node.prototype.visitInRange = function(min, max, visitor) {
-    if (max < this.min[0] || min > this.max[1]) {
-        return;
-    }
     this.left && this.visitInRange.call(this.left, min, max, visitor);
     if (this.value[1] >= min && this.value[0] <= max) {
         visitor(this.obj);
     }
     this.right && this.visitInRange.call(this.right, min, max, visitor);
+};
+
+
+Node.prototype.findIntersection = function(value, visitor) {
+    this.left && this.findIntersection.call(this.left, value, visitor);
+    if (this.value[0] <= value && this.value[1] >= value) {
+        visitor(this.obj);
+    }
+    this.right && this.findIntersection.call(this.right, value, visitor);
 };
