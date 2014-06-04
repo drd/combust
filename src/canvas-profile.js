@@ -109,15 +109,15 @@ var App = {
             return false;
         }.bind(this));
         $(overlay).on('mousemove', function(e) {
-            var x = e.offsetX / profile.width * this.samples.duration * this.state.xScale / 100 + this.state.xOffset;
-            var y = Math.floor((profile.offsetHeight - e.offsetY) / this.state.yScale);
+            var x = e.clientX / profile.width * this.samples.duration * this.state.xScale / 100 + this.state.xOffset;
+            var y = Math.floor((profile.offsetHeight - e.clientY) / this.state.yScale);
             var candidates = this.samples.bsp.intersects(x);
             var frame = candidates.filter(function(c) { return c.depth == y});
             var delta = {hovered: null};
             if (frame.length) {
                 delta.hovered = frame[0];
-                delta.hoverX = e.offsetX;
-                delta.hoverY = e.offsetY;
+                delta.hoverX = e.clientX;
+                delta.hoverY = e.clientY;
             }
             this.setState(delta);
         }.bind(this));
@@ -162,7 +162,7 @@ var App = {
         subcanvas.width = width;
         subcanvas.height = 16;
         var subctx = subcanvas.getContext('2d');
-        subctx.setFillColor('#000')
+        subctx.fillStyle = '#000';
 
         var y = height;
 
@@ -174,7 +174,7 @@ var App = {
             var frame = visibleSamples[i];
             y = height - yScale * (frame.depth + 1);
             if ((i == 0) || (i > 0 && frame.depth != visibleSamples[i-1].depth)) {
-                context.setFillColor(this.fillForDepth(frame.depth));
+                context.fillStyle = this.fillForDepth(frame.depth);
             }
             var frameWidth = frame.duration * size;
             var x = (frame.t - this.state.xOffset) * size;
@@ -196,50 +196,6 @@ var App = {
                                   x, y - 3, textDrawWidth, 16);
             }
         }
-        // for (var j = 0; j < this.samples.height; j++) {
-        //     y -= this.state.yScale;
-
-        //     // set fill & stroke color once
-        //     context.setFillColor(hsl(j * this.ui.hueShift, this.ui.fill.saturation, this.ui.fill.lightness));
-        //     context.setStrokeColor(hsl(j * this.ui.hueShift, this.ui.stroke.saturation, this.ui.stroke.lightness));
-
-        //     var tMax = -1;
-
-        //     for (var i = 0; i < visibleSamples.length; i++) {
-        //         var sample = visibleSamples[i];
-        //         var frame = sample[j];
-        //         if (!frame || sample.t < tMax) {
-        //             continue;
-        //         }
-        //         tMax = sample.t + frame.duration;
-
-        //         var frameWidth = frame.duration * size;
-        //         var x = (sample.t - this.state.xOffset) * size;
-        //         if (x < 0) {
-        //             // adjust width to compensate and draw from the left edge of the screen
-        //             frameWidth += x;
-        //             x = 0;
-        //         }
-        //         var text = frame.fn;
-
-
-        //         context.fillRect(x, y, frameWidth, yScale);
-
-        //         if (frameWidth > this.ui.stroke.threshold) {
-        //             context.strokeRect(x, y, frameWidth, yScale);
-        //         }
-
-        //         if (frameWidth > this.ui.text.threshold) {
-        //             subctx.clearRect(0, 0, subcanvas.width, subcanvas.height);
-        //             subctx.fillText(text, 0, yScale);
-        //             var textWidth = this.measureText(text);
-        //             var textDrawWidth = Math.min(textWidth, frameWidth);
-
-        //             context.drawImage(subcanvas, 0, 0, textDrawWidth, 16,
-        //                               x, y - 3, textDrawWidth, 16);
-        //         }
-        //     }
-        // }
 
         // clear hover on redraw
         this.overlayContext.clearRect(0, 0, overlay.width, overlay.height);
@@ -275,9 +231,9 @@ var App = {
             top += overlay.offsetHeight - (height + top) - this.ui.padding;
         }
 
-        context.setFillColor(this.ui.hover.bgColor);
+        context.fillStyle = this.ui.hover.bgColor;
         context.fillRect(left, top, width, height);
-        context.setFillColor(this.ui.hover.color);
+        context.fillStyle = this.ui.hover.color;
         lines.forEach(function(line, i) {
             context.fillText(line, left + this.ui.padding, top + (i + 1) * this.ui.text.lineHeight);
         }.bind(this));
